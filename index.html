@@ -9,7 +9,7 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-image: url('https://www.myweekly.co.uk/wp-content/uploads/sites/9/2018/06/iStock-814684194-coffee-x.jpg');
+            background-image: url('https://img.freepik.com/free-photo/coffee-beans-background_1150-4166.jpg');
             background-size: cover;
             background-attachment: fixed;
             color: #fff;
@@ -87,7 +87,33 @@
         </div>
     </div>
 
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+
     <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            const firebaseConfig = {
+  apiKey: "AIzaSyAn_cA-O6M8A1LwiA3Dr97B0SN-RPkoaWU",
+  authDomain: "coffee-counter-9d478.firebaseapp.com",
+  databaseURL: "https://coffee-counter-9d478-default-rtdb.firebaseio.com",
+  projectId: "coffee-counter-9d478",
+  storageBucket: "coffee-counter-9d478.appspot.com",
+  messagingSenderId: "714362481832",
+  appId: "1:714362481832:web:9fe26409bc86324696669d"
+};
+
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Get a reference to the database service
+        const database = firebase.database();
+
         let profiles = [];
         let capsuleCost = 1.26;
 
@@ -101,9 +127,9 @@
                     <h2>${profile.name}</h2>
                     <div class="counter">Capsules: ${profile.count}</div>
                     <div class="cost">Coût total: $${(profile.count * capsuleCost).toFixed(2)}</div>
-                    <button onclick="changeCount(${index}, 1)">+1</button>
-                    <button onclick="changeCount(${index}, -1)">-1</button>
-                    <button onclick="deleteProfile(${index})">Supprimer</button>
+                    <button onclick="changeCount('${profile.id}', 1)">+1</button>
+                    <button onclick="changeCount('${profile.id}', -1)">-1</button>
+                    <button onclick="deleteProfile('${profile.id}')">Supprimer</button>
                 `;
                 profilesContainer.appendChild(profileDiv);
             });
@@ -113,29 +139,33 @@
         function addProfile() {
             const name = document.getElementById('newProfileName').value;
             if (name) {
-                profiles.push({ name, count: 0 });
+                const newProfileRef = database.ref('profiles').push();
+                newProfileRef.set({
+                    name: name,
+                    count: 0
+                });
                 document.getElementById('newProfileName').value = '';
-                renderProfiles();
-                saveProfiles();
             }
         }
 
-        function changeCount(index, change) {
-            profiles[index].count = Math.max(0, profiles[index].count + change);
-            renderProfiles();
-            saveProfiles();
+        function changeCount(profileId, change) {
+            const profileRef = database.ref('profiles/' + profileId);
+            profileRef.once('value').then((snapshot) => {
+                const profile = snapshot.val();
+                const newCount = Math.max(0, profile.count + change);
+                profileRef.update({ count: newCount });
+            });
         }
 
-        function deleteProfile(index) {
-            profiles.splice(index, 1);
-            renderProfiles();
-            saveProfiles();
+        function deleteProfile(profileId) {
+            if (confirm("Êtes-vous sûr de vouloir supprimer ce profil ?")) {
+                database.ref('profiles/' + profileId).remove();
+            }
         }
 
         function updateCosts() {
             capsuleCost = parseFloat(document.getElementById('capsuleCost').value);
-            renderProfiles();
-            saveProfiles();
+            database.ref('settings/capsuleCost').set(capsuleCost);
         }
 
         function updateTotalCount() {
@@ -145,31 +175,29 @@
 
         function resetAllCounters() {
             if (confirm("Êtes-vous sûr de vouloir réinitialiser tous les compteurs à zéro ?")) {
-                profiles.forEach(profile => profile.count = 0);
-                renderProfiles();
-                saveProfiles();
+                profiles.forEach(profile => {
+                    database.ref('profiles/' + profile.id).update({ count: 0 });
+                });
             }
         }
 
-        function saveProfiles() {
-            localStorage.setItem('cafeProfiles', JSON.stringify({
-                profiles: profiles,
-                capsuleCost: capsuleCost
-            }));
-        }
+        // Listen for changes in the database
+        database.ref('profiles').on('value', (snapshot) => {
+            profiles = [];
+            snapshot.forEach((childSnapshot) => {
+                profiles.push({
+                    id: childSnapshot.key,
+                    ...childSnapshot.val()
+                });
+            });
+            renderProfiles();
+        });
 
-        function loadProfiles() {
-            const savedData = localStorage.getItem('cafeProfiles');
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                profiles = data.profiles;
-                capsuleCost = data.capsuleCost || 1.26;
-                document.getElementById('capsuleCost').value = capsuleCost;
-                renderProfiles();
-            }
-        }
-
-        loadProfiles();
+        database.ref('settings/capsuleCost').on('value', (snapshot) => {
+            capsuleCost = snapshot.val() || 1.26;
+            document.getElementById('capsuleCost').value = capsuleCost;
+            renderProfiles();
+        });
     </script>
 </body>
 </html>
