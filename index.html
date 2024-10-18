@@ -7,17 +7,29 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
+            margin: 0;
             padding: 20px;
+            background-image: url('https://img.freepik.com/free-photo/coffee-beans-background_1150-4166.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            color: #fff;
         }
-        h1, h2 {
-            text-align: center;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        #profiles {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
         }
         .profile {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        h2 {
+            margin-top: 0;
         }
         .counter, .cost {
             font-size: 18px;
@@ -27,42 +39,57 @@
             font-size: 16px;
             margin-right: 5px;
             cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
         }
-        #newProfileForm, #totalCapsules, #settings {
+        button:hover {
+            background-color: #45a049;
+        }
+        #totalCapsules, #newProfileForm, #settings {
+            background-color: rgba(0, 0, 0, 0.7);
             margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 10px;
         }
-        input[type="number"] {
-            width: 60px;
+        input[type="number"], input[type="text"] {
+            width: 100px;
+            padding: 5px;
+            margin: 5px 0;
+        }
+        #resetAllButton {
+            background-color: #f44336;
+        }
+        #resetAllButton:hover {
+            background-color: #d32f2f;
         }
     </style>
 </head>
 <body>
-    <h1>Compteur de Capsules de Café</h1>
-    <div id="profiles"></div>
-    <div id="totalCapsules">
-        <h2>Total des capsules consommées: <span id="totalCount">0</span></h2>
-    </div>
-    <div id="newProfileForm">
-        <h2>Ajouter un nouveau profil</h2>
-        <input type="text" id="newProfileName" placeholder="Nom du profil">
-        <button onclick="addProfile()">Ajouter</button>
-    </div>
-    <div id="settings">
-        <h2>Paramètres</h2>
-        <label for="capsuleCost">Coût par capsule ($): </label>
-        <input type="number" id="capsuleCost" value="1.26" step="0.01" onchange="updateCosts()">
-        <br><br>
-        <label for="initialStock">Stock de capsules: </label>
-        <input type="number" id="initialStock" value="100" onchange="updateStock()">
-        <button onclick="refillStock()">Réapprovisionner</button>
+    <div class="container">
+        <div id="profiles"></div>
+        <div id="totalCapsules">
+            <h2>Total des capsules consommées: <span id="totalCount">0</span></h2>
+        </div>
+        <div id="newProfileForm">
+            <h2>Ajouter un nouveau profil</h2>
+            <input type="text" id="newProfileName" placeholder="Nom du profil">
+            <button onclick="addProfile()">Ajouter</button>
+        </div>
+        <div id="settings">
+            <h2>Paramètres</h2>
+            <label for="capsuleCost">Coût par capsule ($): </label>
+            <input type="number" id="capsuleCost" value="1.26" step="0.01" onchange="updateCosts()">
+            <br>
+            <button id="resetAllButton" onclick="resetAllCounters()">Réinitialiser tous les compteurs</button>
+        </div>
     </div>
 
     <script>
         let profiles = [];
         let capsuleCost = 1.26;
-        let totalCapsules = 100;
 
         function renderProfiles() {
             const profilesContainer = document.getElementById('profiles');
@@ -94,18 +121,12 @@
         }
 
         function changeCount(index, change) {
-            if (totalCapsules + change >= 0) {
-                profiles[index].count += change;
-                totalCapsules += change;
-                renderProfiles();
-                saveProfiles();
-            } else {
-                alert("Stock insuffisant !");
-            }
+            profiles[index].count = Math.max(0, profiles[index].count + change);
+            renderProfiles();
+            saveProfiles();
         }
 
         function deleteProfile(index) {
-            totalCapsules += profiles[index].count;
             profiles.splice(index, 1);
             renderProfiles();
             saveProfiles();
@@ -117,28 +138,23 @@
             saveProfiles();
         }
 
-        function updateStock() {
-            totalCapsules = parseInt(document.getElementById('initialStock').value);
-            updateTotalCount();
-            saveProfiles();
-        }
-
-        function refillStock() {
-            totalCapsules += 100;
-            document.getElementById('initialStock').value = totalCapsules;
-            updateTotalCount();
-            saveProfiles();
-        }
-
         function updateTotalCount() {
-            document.getElementById('totalCount').textContent = totalCapsules;
+            const totalCount = profiles.reduce((sum, profile) => sum + profile.count, 0);
+            document.getElementById('totalCount').textContent = totalCount;
+        }
+
+        function resetAllCounters() {
+            if (confirm("Êtes-vous sûr de vouloir réinitialiser tous les compteurs à zéro ?")) {
+                profiles.forEach(profile => profile.count = 0);
+                renderProfiles();
+                saveProfiles();
+            }
         }
 
         function saveProfiles() {
             localStorage.setItem('cafeProfiles', JSON.stringify({
                 profiles: profiles,
-                capsuleCost: capsuleCost,
-                totalCapsules: totalCapsules
+                capsuleCost: capsuleCost
             }));
         }
 
@@ -148,9 +164,7 @@
                 const data = JSON.parse(savedData);
                 profiles = data.profiles;
                 capsuleCost = data.capsuleCost || 1.26;
-                totalCapsules = data.totalCapsules || 100;
                 document.getElementById('capsuleCost').value = capsuleCost;
-                document.getElementById('initialStock').value = totalCapsules;
                 renderProfiles();
             }
         }
